@@ -11,7 +11,7 @@
 tensorrtx-yolov5-v6.0/yolov5/yolov5.cpp
 ```
 
-相关教程：
+具体细节：
 
 - https://blog.csdn.net/baihei23311/article/details/149579053?spm=1001.2014.3001.5501
 - https://blog.csdn.net/baihei23311/article/details/149617428?spm=1001.2014.3001.5501
