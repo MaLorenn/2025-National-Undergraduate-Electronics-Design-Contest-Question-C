@@ -1,0 +1,60 @@
+Traceback (most recent call last):
+  File "day2_2_3.py", line 109, in <module>
+    region = cv2.bitwise_and(cv2.cvtColor(img_raw, cv2.COLOR_BGR2GRAY), mask=mask)
+cv2.error: OpenCV(4.5.5) :-1: error: (-5:Bad argument) in function 'bitwise_and'
+> Overload resolution failed:
+>  - Required argument 'src2' (pos 2) not found
+>  - Required argument 'src2' (pos 2) not found
+
+
+
+
+
+针对运动模糊，采用边缘增强/去模糊**算法（进阶方案）
+Sobel算子/锐化卷积，在二值化之前尝试锐化图像，增强边界。
+
+例子（可选，提升有限，但低分辨率下可尝试）：
+
+python
+复制
+编辑
+kernel_sharpen = np.array([[0, -1, 0],
+                           [-1, 5, -1],
+                           [0, -1, 0]])
+sharp = cv2.filter2D(blur_cpu, -1, kernel_sharpen)
+然后用 sharp 进入后续流程。
+
+更高端方法： 运动去模糊（deblur）算法（如 OpenCV 的 Wiener 滤波、深度学习方法），但这对实时帧率有较大影响，不推荐 Jetson Nano 上直接用。
+
+你有大量基础 CUDA 算子（如 cvtColor, threshold, resize, remap, morphology），完全可以搭建高效的 GPU pipeline！
+
+减少循环中的计算量
+findContours 可以只用最简单的 cv2.RETR_EXTERNAL 而非 cv2.RETR_TREE，如果你不关心嵌套关系，速度快一些。
+
+
+4. 优化图像采集和显示
+不要在循环内每帧都调用 print，影响主线程实时性（你可以单独开线程统计帧率/每N帧显示一次）。
+
+可以把 cv2.imshow 放在更高效的异步线程，如果主循环不依赖键盘控制，主线程只采集和处理，显示线程单独负责。
+
+5. 简化串口发送/判定
+串口发包频率不需要和帧率严格同步，可以用队列/定时线程单独处理。
+
+这样主循环只聚焦图像计算，I/O 不会阻塞。
+
+6. 批量预处理（不常用，但可尝试）
+如果业务允许，可以每隔2帧采集一次，推理时拿前后2帧拼 batch 一起推理，有时候整体吞吐量提升（尤其是用深度学习模型时）。
+
+7. Release/Debug 影响
+编译 OpenCV、Numpy 记得用 release 版，不要 debug。
+
+8. 其他硬件/驱动提升
+Jetson Nano 建议用 JetPack 官方 OpenCV，带完整 CUDA 支持。
+
+检查你的 OpenCV 是不是带了 WITH_CUDA、WITH_TBB（线程并行）。
+
+9. 可替换的轻量级算法
+如果不需要精准轮廓，考虑用边缘检测（如 Sobel/Scharr）而不是 Canny 或多重滤波、闭运算等。
+
+如果只需找中心点，可以直接用形态学中心的均值/质心法等替代精确轮廓拟合。
+
